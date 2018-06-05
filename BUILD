@@ -48,13 +48,12 @@ objc_library(
     name = "FBLPromises",
     srcs = glob([
         "Sources/FBLPromises/*.m",
-        "Sources/FBLPromises/DotSyntax/*.m",
     ]),
     hdrs = glob([
         "Sources/FBLPromises/include/*.h",
-        "Sources/FBLPromises/include/DotSyntax/*.h",
     ]) + [
         "FBLPromises.h",
+        "FBLPromise+Testing.h",
     ],
     copts = OBJC_COPTS,
     includes = [
@@ -84,6 +83,8 @@ objc_library(
 
 ios_unit_test(
     name = "Tests",
+    minimum_os_version = "8.0",
+    test_host = "@build_bazel_rules_apple//apple/testing/default_host/ios",
     deps = [
         ":FBLPromisesInteroperabilityTests",
         ":FBLPromisesPerformanceTests",
@@ -125,8 +126,10 @@ swift_library(
     srcs = glob([
         "Tests/PromisesPerformanceTests/*.swift",
     ]),
-    copts = SWIFT_COPTS,
-    swift_version = 4,
+    copts = SWIFT_COPTS + [
+        "-swift-version",
+        "4",
+    ],
     deps = [
         ":FBLPromisesTestHelpers",
         ":PromisesTestHelpers",

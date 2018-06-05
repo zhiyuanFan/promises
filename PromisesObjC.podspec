@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name        = 'PromisesObjC'
-  s.version     = '1.0.0'
+  s.version     = '1.2.2'
   s.authors     = 'Google Inc.'
   s.license     = { :type => 'Apache', :file => 'LICENSE' }
   s.homepage    = 'https://github.com/google/promises'
@@ -12,16 +12,16 @@ Pod::Spec.new do |s|
   Objective-C to facilitate writing asynchronous code.
                      DESC
 
-  s.ios.deployment_target  = '9.0'
+  s.ios.deployment_target  = '8.0'
   s.osx.deployment_target  = '10.10'
   s.tvos.deployment_target = '9.0'
+  s.watchos.deployment_target = '2.0'
 
   s.module_name = 'FBLPromises'
   s.prefix_header_file = false
   s.header_mappings_dir = "Sources/#{s.module_name}/include/"
   s.public_header_files = "Sources/#{s.module_name}/include/**/*.h"
-  s.private_header_files = "Sources/#{s.module_name}/include/FBLPromiseErrorPrivate.h",
-                           "Sources/#{s.module_name}/include/FBLPromisePrivate.h"
+  s.private_header_files = "Sources/#{s.module_name}/include/FBLPromisePrivate.h"
   s.source_files = "Sources/#{s.module_name}/**/*.{h,m}"
   s.xcconfig = {
     'HEADER_SEARCH_PATHS' => "\"${PODS_TARGET_SRCROOT}/Sources/#{s.module_name}/include\""

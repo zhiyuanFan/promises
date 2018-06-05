@@ -39,6 +39,18 @@
   XCTAssertNil(promise.error);
 }
 
+- (void)testPromiseDoReturnPromise {
+  // Arrange & Act.
+  FBLPromise<NSNumber *> *promise = [FBLPromise do:^id {
+    return [FBLPromise resolvedWith:@42];
+  }];
+
+  // Assert.
+  XCTAssert(FBLWaitForPromisesWithTimeout(10));
+  XCTAssertEqualObjects(promise.value, @42);
+  XCTAssertNil(promise.error);
+}
+
 - (void)testPromiseDoReject {
   // Arrange & Act.
   FBLPromise<NSNumber *> *promise = [FBLPromise do:^id {
@@ -52,53 +64,34 @@
   XCTAssertNil(promise.value);
 }
 
-- (void)testPromiseDoThrow {
-  // Arrange & Act.
-  FBLPromise<NSNumber *> *promise = [FBLPromise do:^id {
-    @throw [NSException exceptionWithName:@"name" reason:@"reason" userInfo:nil];  // NOLINT
-  }];
-
-  // Assert.
-  XCTAssert(FBLWaitForPromisesWithTimeout(10));
-  XCTAssertEqualObjects(promise.error.domain, FBLPromiseErrorDomain);
-  XCTAssertEqual(promise.error.code, FBLPromiseErrorCodeException);
-  XCTAssertEqualObjects(promise.error.userInfo[FBLPromiseErrorUserInfoExceptionNameKey], @"name");
-  XCTAssertEqualObjects(promise.error.userInfo[FBLPromiseErrorUserInfoExceptionReasonKey],
-                        @"reason");
-}
-
 /**
  Promise created with `do` should not deallocate until it gets resolved.
  */
 - (void)testPromiseDoNoDeallocUntilFulfilled {
   // Arrange.
-  FBLPromise __weak *weakExtendedPromise1;
-  FBLPromise __weak *weakExtendedPromise2;
+  FBLPromise __weak *weakPromise1;
+  FBLPromise __weak *weakPromise2;
 
   // Act.
   @autoreleasepool {
-    XCTAssertNil(weakExtendedPromise1);
-    XCTAssertNil(weakExtendedPromise2);
-    FBLPromise *promise1 = [FBLPromise do:^{
+    XCTAssertNil(weakPromise1);
+    XCTAssertNil(weakPromise2);
+    weakPromise1 = [FBLPromise do:^{
       return @42;
     }];
-    FBLPromise *promise2 = [FBLPromise do:^{
+    weakPromise2 = [FBLPromise do:^{
       return @42;
     }];
-    FBLPromise *extendedPromise1 = promise1;
-    FBLPromise *extendedPromise2 = promise2;
-    weakExtendedPromise1 = extendedPromise1;
-    weakExtendedPromise2 = extendedPromise2;
-    XCTAssertNotNil(weakExtendedPromise1);
-    XCTAssertNotNil(weakExtendedPromise2);
+    XCTAssertNotNil(weakPromise1);
+    XCTAssertNotNil(weakPromise2);
   }
 
   // Assert.
-  XCTAssertNotNil(weakExtendedPromise1);
-  XCTAssertNotNil(weakExtendedPromise2);
+  XCTAssertNotNil(weakPromise1);
+  XCTAssertNotNil(weakPromise2);
   XCTAssert(FBLWaitForPromisesWithTimeout(10));
-  XCTAssertNil(weakExtendedPromise1);
-  XCTAssertNil(weakExtendedPromise2);
+  XCTAssertNil(weakPromise1);
+  XCTAssertNil(weakPromise2);
 }
 
 @end

@@ -31,6 +31,7 @@
 
 - (void)testPromiseAny {
   // Arrange.
+  NSArray *expectedValues = @[ @42, @"hello world", @[ @42 ], [NSNull null] ];
   FBLPromise<NSNumber *> *promise1 =
       [FBLPromise async:^(FBLPromiseFulfillBlock fulfill, FBLPromiseRejectBlock __unused _) {
         FBLDelay(0.1, ^{
@@ -57,141 +58,144 @@
       }];
 
   // Act.
-  FBLPromise *fastestPromise =
-      [[FBLPromise any:@[ promise1, promise2, promise3, promise4 ]] then:^id(NSNumber *value) {
-        XCTAssertEqualObjects(value, @42);
+  FBLPromise<NSArray *> *combinedPromise =
+      [[FBLPromise any:@[ promise1, promise2, promise3, promise4 ]] then:^id(NSArray *value) {
+        XCTAssertEqualObjects(value, expectedValues);
         return value;
       }];
 
   // Assert.
   XCTAssert(FBLWaitForPromisesWithTimeout(10));
-  XCTAssertEqualObjects(fastestPromise.value, @42);
-  XCTAssertNil(fastestPromise.error);
+  XCTAssertEqualObjects(combinedPromise.value, expectedValues);
+  XCTAssertNil(combinedPromise.error);
 }
 
-- (void)testPromiseAnyRejectFirst {
-  // Arrange.
-  FBLPromise<NSNumber *> *promise1 =
-      [FBLPromise async:^(FBLPromiseFulfillBlock fulfill, FBLPromiseRejectBlock __unused _) {
-        FBLDelay(1, ^{
-          fulfill(@42);
-        });
-      }];
-  FBLPromise<NSString *> *promise2 =
-      [FBLPromise async:^(FBLPromiseFulfillBlock __unused _, FBLPromiseRejectBlock reject) {
-        FBLDelay(0.1, ^{
-          reject([NSError errorWithDomain:FBLPromiseErrorDomain code:42 userInfo:nil]);
-        });
-      }];
-
+- (void)testPromiseAnyEmpty {
   // Act.
-  FBLPromise *fastestPromise = [[[FBLPromise any:@[ promise1, promise2 ]] then:^id(id __unused _) {
-    XCTFail();
-    return nil;
-  }] catch:^(NSError *error) {
-    XCTAssertEqual(error.code, 42);
-  }];
-
-  // Assert.
-  XCTAssert(FBLWaitForPromisesWithTimeout(10));
-  XCTAssertEqual(fastestPromise.error.code, 42);
-  XCTAssertNil(fastestPromise.value);
-}
-
-- (void)testPromiseAnyRejectLast {
-  // Arrange.
-  FBLPromise<NSNumber *> *promise1 =
-      [FBLPromise async:^(FBLPromiseFulfillBlock fulfill, FBLPromiseRejectBlock __unused _) {
-        FBLDelay(0.1, ^{
-          fulfill(@42);
-        });
-      }];
-  FBLPromise<NSString *> *promise2 =
-      [FBLPromise async:^(FBLPromiseFulfillBlock __unused _, FBLPromiseRejectBlock reject) {
-        FBLDelay(1, ^{
-          reject([NSError errorWithDomain:FBLPromiseErrorDomain code:42 userInfo:nil]);
-        });
-      }];
-
-  // Act.
-  FBLPromise *fastestPromise = [[FBLPromise any:@[ promise1, promise2 ]] then:^id(NSNumber *value) {
-    XCTAssertEqualObjects(value, @42);
+  FBLPromise<NSArray *> *promise = [[FBLPromise any:@[]] then:^id(NSArray *value) {
+    XCTAssertEqualObjects(value, @[]);
     return value;
   }];
 
   // Assert.
   XCTAssert(FBLWaitForPromisesWithTimeout(10));
-  XCTAssertEqualObjects(fastestPromise.value, @42);
-  XCTAssertNil(fastestPromise.error);
+  XCTAssertEqualObjects(promise.value, @[]);
+  XCTAssertNil(promise.error);
 }
 
-- (void)testPromiseAnyWithValues {
+- (void)testPromiseAnyRejectFirst {
   // Arrange.
-  FBLPromise<NSArray<NSNumber *> *> *promise =
+  NSError *expectedError = [NSError errorWithDomain:FBLPromiseErrorDomain code:42 userInfo:nil];
+  NSArray *expectedValuesAndErrors = @[ @42, expectedError ];
+  FBLPromise<NSNumber *> *promise1 =
       [FBLPromise async:^(FBLPromiseFulfillBlock fulfill, FBLPromiseRejectBlock __unused _) {
+        FBLDelay(1, ^{
+          fulfill(@42);
+        });
+      }];
+  FBLPromise<NSString *> *promise2 =
+      [FBLPromise async:^(FBLPromiseFulfillBlock __unused _, FBLPromiseRejectBlock reject) {
         FBLDelay(0.1, ^{
-          fulfill(@[ @42 ]);
+          reject([NSError errorWithDomain:FBLPromiseErrorDomain code:42 userInfo:nil]);
         });
       }];
 
   // Act.
-  FBLPromise *fastestPromise =
-      [[FBLPromise any:@[ @42, @"hello world", promise ]] then:^id(NSNumber *value) {
-        XCTAssertEqualObjects(value, @42);
+  FBLPromise<NSArray *> *combinedPromise =
+      [[FBLPromise any:@[ promise1, promise2 ]] then:^id(NSArray *value) {
+        XCTAssertEqualObjects(value, expectedValuesAndErrors);
         return value;
       }];
 
   // Assert.
   XCTAssert(FBLWaitForPromisesWithTimeout(10));
-  XCTAssertEqualObjects(fastestPromise.value, @42);
-  XCTAssertNil(fastestPromise.error);
+  XCTAssertEqualObjects(combinedPromise.value, expectedValuesAndErrors);
+  XCTAssertNil(combinedPromise.error);
 }
 
-- (void)testPromiseAnyWithErrorFirst {
+- (void)testPromiseAnyRejectLast {
   // Arrange.
-  NSError *error = [NSError errorWithDomain:FBLPromiseErrorDomain code:42 userInfo:nil];
-  FBLPromise<NSArray<NSNumber *> *> *promise =
+  NSError *expectedError = [NSError errorWithDomain:FBLPromiseErrorDomain code:42 userInfo:nil];
+  NSArray *expectedValuesAndErrors = @[ @42, expectedError ];
+  FBLPromise<NSNumber *> *promise1 =
       [FBLPromise async:^(FBLPromiseFulfillBlock fulfill, FBLPromiseRejectBlock __unused _) {
         FBLDelay(0.1, ^{
-          fulfill(@[ @42 ]);
+          fulfill(@42);
+        });
+      }];
+  FBLPromise<NSString *> *promise2 =
+      [FBLPromise async:^(FBLPromiseFulfillBlock __unused _, FBLPromiseRejectBlock reject) {
+        FBLDelay(1, ^{
+          reject([NSError errorWithDomain:FBLPromiseErrorDomain code:42 userInfo:nil]);
         });
       }];
 
   // Act.
-  FBLPromise *fastestPromise = [[[FBLPromise any:@[ promise, error, @42 ]] then:^id(id __unused _) {
-    XCTFail();
-    return nil;
-  }] catch:^(NSError *error) {
-    XCTAssertEqual(error.code, 42);
-  }];
-
-  // Assert.
-  XCTAssert(FBLWaitForPromisesWithTimeout(10));
-  XCTAssertEqual(fastestPromise.error.code, 42);
-  XCTAssertNil(fastestPromise.value);
-}
-
-- (void)testPromiseAnyWithErrorLast {
-  // Arrange.
-  NSError *error = [NSError errorWithDomain:FBLPromiseErrorDomain code:42 userInfo:nil];
-  FBLPromise<NSArray<NSNumber *> *> *promise =
-      [FBLPromise async:^(FBLPromiseFulfillBlock fulfill, FBLPromiseRejectBlock __unused _) {
-        FBLDelay(0.1, ^{
-          fulfill(@[ @42 ]);
-        });
-      }];
-
-  // Act.
-  FBLPromise *fastestPromise =
-      [[FBLPromise any:@[ promise, @42, error ]] then:^id(NSNumber *value) {
-        XCTAssertEqualObjects(value, @42);
+  FBLPromise<NSArray *> *combinedPromise =
+      [[FBLPromise any:@[ promise1, promise2 ]] then:^id(NSArray *value) {
+        XCTAssertEqualObjects(value, expectedValuesAndErrors);
         return value;
       }];
 
   // Assert.
   XCTAssert(FBLWaitForPromisesWithTimeout(10));
-  XCTAssertEqualObjects(fastestPromise.value, @42);
-  XCTAssertNil(fastestPromise.error);
+  XCTAssertEqualObjects(combinedPromise.value, expectedValuesAndErrors);
+  XCTAssertNil(combinedPromise.error);
+}
+
+- (void)testPromiseAnyRejectAll {
+  // Arrange.
+  FBLPromise<NSNumber *> *promise1 =
+      [FBLPromise async:^(FBLPromiseFulfillBlock __unused _, FBLPromiseRejectBlock reject) {
+        FBLDelay(0.1, ^{
+          reject([NSError errorWithDomain:FBLPromiseErrorDomain code:13 userInfo:nil]);
+        });
+      }];
+  FBLPromise<NSString *> *promise2 =
+      [FBLPromise async:^(FBLPromiseFulfillBlock __unused _, FBLPromiseRejectBlock reject) {
+        FBLDelay(1, ^{
+          reject([NSError errorWithDomain:FBLPromiseErrorDomain code:42 userInfo:nil]);
+        });
+      }];
+
+  // Act.
+  FBLPromise<NSArray *> *combinedPromise =
+      [[[FBLPromise any:@[ promise1, promise2 ]] then:^id(id __unused _) {
+        XCTFail();
+        return nil;
+      }] catch:^(NSError *error) {
+        XCTAssertEqual(error.code, 42);
+      }];
+
+  // Assert.
+  XCTAssert(FBLWaitForPromisesWithTimeout(10));
+  XCTAssertEqual(combinedPromise.error.code, 42);
+  XCTAssertNil(combinedPromise.value);
+}
+
+- (void)testPromiseAnyWithValuesAndErrors {
+  // Arrange.
+  NSError *expectedError = [NSError errorWithDomain:FBLPromiseErrorDomain code:42 userInfo:nil];
+  NSArray *expectedValues = @[ @42, expectedError, @[ @42 ] ];
+  FBLPromise<NSArray<NSNumber *> *> *promise =
+      [FBLPromise async:^(FBLPromiseFulfillBlock fulfill, FBLPromiseRejectBlock __unused _) {
+        FBLDelay(0.1, ^{
+          fulfill(@[ @42 ]);
+        });
+      }];
+
+  // Act.
+  NSError *error = [NSError errorWithDomain:FBLPromiseErrorDomain code:42 userInfo:nil];
+  FBLPromise<NSArray *> *combinedPromise =
+      [[FBLPromise any:@[ @42, error, promise ]] then:^id(NSArray *value) {
+        XCTAssertEqualObjects(value, expectedValues);
+        return value;
+      }];
+
+  // Assert.
+  XCTAssert(FBLWaitForPromisesWithTimeout(10));
+  XCTAssertEqualObjects(combinedPromise.value, expectedValues);
+  XCTAssertNil(combinedPromise.error);
 }
 
 /**
@@ -207,10 +211,8 @@
   @autoreleasepool {
     XCTAssertNil(weakExtendedPromise1);
     XCTAssertNil(weakExtendedPromise2);
-    FBLPromise *extendedPromise1 = [FBLPromise any:@[ promise ]];
-    FBLPromise *extendedPromise2 = [FBLPromise any:@[ promise ]];
-    weakExtendedPromise1 = extendedPromise1;
-    weakExtendedPromise2 = extendedPromise2;
+    weakExtendedPromise1 = [FBLPromise any:@[ promise ]];
+    weakExtendedPromise2 = [FBLPromise any:@[ promise ]];
     XCTAssertNotNil(weakExtendedPromise1);
     XCTAssertNotNil(weakExtendedPromise2);
   }
